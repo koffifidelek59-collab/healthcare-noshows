@@ -1,0 +1,431 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[T1]{fontenc}\usepackage[utf8]{inputenc}\usepackage{times}
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=2.5cm,right=2.5cm]{geometry}
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{booktabs}\usepackage{array}\usepackage{enumitem}\usepackage{tabularx}
+\usepackage{caption}\usepackage{fancyhdr}\usepackage{parskip}\usepackage{float}
+\usepackage{setspace}\onehalfspacing
+\usepackage{xcolor}
+\usepackage{xurl}\usepackage[hidelinks]{hyperref}
+\definecolor{navy}{HTML}{1B4F72}
+\newcommand{\F}[1]{{\small\texttt{#1}}}
+\captionsetup{font=small,labelfont=bf,labelsep=colon,
+              justification=justified,singlelinecheck=false}
+\setlist[itemize]{leftmargin=1.3em,itemsep=4pt,topsep=4pt}
+\setlist[enumerate]{leftmargin=1.6em,itemsep=6pt,topsep=4pt}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\footnotesize KOUAME Koffi Fid\`ele}
+\fancyhead[C]{\footnotesize HEALTHCARE NO-SHOWS}
+\fancyhead[R]{\footnotesize Data Analysis Internship}
+\fancyfoot[C]{\thepage}\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+\setlength{\emergencystretch}{2em}
+
+% A workbook capture: framed with a hairline so that it sits cleanly on the page
+\newcommand{\capture}[3][\linewidth]{%
+\begin{figure}[H]\centering
+\setlength{\fboxsep}{0pt}\setlength{\fboxrule}{0.4pt}%
+\fbox{\includegraphics[width=\dimexpr#1-0.8pt\relax]{#2}}
+\caption{#3}
+\end{figure}}
+% Two charts of the dashboard side by side
+\newcommand{\pair}[3]{%
+\begin{figure}[H]\centering
+\setlength{\fboxsep}{0pt}\setlength{\fboxrule}{0.4pt}%
+\fbox{\includegraphics[width=0.485\linewidth]{#1}}\hfill
+\fbox{\includegraphics[width=0.485\linewidth]{#2}}
+\caption{#3}
+\end{figure}}
+% A clickable entry of the cover
+\newcommand{\go}[2]{\hyperref[#1]{#2}}
+
+\begin{document}
+
+\begin{titlepage}\centering
+\singlespacing
+\vspace*{3cm}
+{\large\scshape Data Analysis Internship}\\[2.6cm]
+\rule{\linewidth}{0.5pt}\\[0.8cm]
+{\LARGE\bfseries Healthcare No-Shows}\\[0.6cm]
+{\large Why Patients Miss Their Appointments:\\[2pt] Data Cleaning, KPIs and an Interactive Excel Dashboard}\\[0.8cm]
+\rule{\linewidth}{0.5pt}\\[1.2cm]
+{\normalsize \go{sec:data}{Data} $\bullet$ \go{sec:quality}{Data Quality} $\bullet$
+\go{sec:cleaning}{Cleaning} $\bullet$ \go{sec:kpis}{KPIs}\\[4pt]
+\go{sec:results}{Results} $\bullet$ \go{sec:insights}{Insights} $\bullet$
+\go{sec:dashboard}{Excel Dashboard}}\\[3.2cm]
+{\large\itshape Prepared by}\\[0.5cm]
+{\Large\bfseries KOUAME Koffi Fid\`ele}\\[0.6cm]
+{\large \today}
+\vfill\end{titlepage}
+
+\singlespacing
+\tableofcontents\newpage
+\onehalfspacing
+
+% =====================================================================
+\section{Executive summary}\label{sec:summary}
+
+The task is to turn the raw file \F{healthcare\_noshows.csv} into a professional,
+interactive Excel dashboard: clean and prepare the data, define the relevant KPIs, build
+the charts and extract the insights that explain why patients miss their appointments.
+The whole work is done in Excel, in one workbook: \F{Healthcare\_NoShows\_Dashboard.xlsx}.
+
+The file holds \textbf{106{,}987 appointments} held between 29 April and 8 June 2016.
+After cleaning, \textbf{106{,}977 appointments} of \textbf{60{,}268 patients} remain, and
+\textbf{21{,}672} of them were missed: \textbf{one appointment in five (20.3\%)}.
+
+\textbf{Waiting is the main driver.} An appointment made for the same day is missed in
+\textbf{4.7\%} of cases; an appointment booked one day or more ahead in \textbf{28.5\%},
+six times more.
+
+\textbf{The SMS reminder works, although the raw figures say the opposite.} Patients who
+received an SMS miss more often (27.7\% against 16.7\%), because the reminder is only
+sent for appointments booked several days ahead. Compared at the same lead time, the
+SMS lowers the no-show rate in every band; the Mantel-Haenszel odds ratio computed in
+the workbook is \textbf{0.78}.
+
+\textbf{Past behaviour predicts the next visit.} After a previous no-show the rate is
+\textbf{29.4\%}, against 17.1\% after an attended visit. Teenagers (26.4\%) and welfare
+recipients (+3.9 points) also miss more; the weekday makes almost no difference.
+
+The file supports a simple targeting rule: remind every patient booked one day or more
+ahead, and call the patients who already missed an appointment.
+
+% =====================================================================
+\section{Data and method}\label{sec:data}
+
+\subsection{The data}
+
+The file supplied with the task has 15 columns and one row per appointment: the patient
+and appointment identifiers (\F{PatientId}, \F{AppointmentID}), the gender and age, the
+neighbourhood of the health unit, the booking and appointment dates (\F{ScheduledDay},
+\F{AppointmentDay}) and their difference in days (\F{Date.diff}), five health and social
+flags (\F{Scholarship}, \F{Hipertension}, \F{Diabetes}, \F{Alcoholism}, \F{Handcap}),
+the reminder flag \F{SMS\_received} and the outcome \F{Showed\_up}.
+
+\subsection{Method}
+
+The work follows the brief step by step, with Excel tools only.
+
+\begin{enumerate}
+\item \textbf{Audit:} completeness, duplicates, ranges and chronology of the dates
+(Excel table, COUNTIFS, COUNTBLANK).
+\item \textbf{Cleaning:} invalid rows removed, columns renamed, codes recoded (recoding
+tables, PROPER, SUBSTITUTE).
+\item \textbf{Preparation:} nine analysis fields added by formula (IF, CHOOSE, WEEKDAY).
+\item \textbf{KPIs:} nine indicators, each answering one question (AVERAGE, SUM,
+AVERAGEIFS).
+\item \textbf{Analysis:} rates by segment and chi-square tests of the differences
+(COUNTIFS, SUMIFS, CHISQ.DIST.RT).
+\item \textbf{Dashboard and insights:} two interactive dashboards (pivot tables, pivot
+charts, slicers, drop-down lists) and seven findings, each with an action and an owner.
+\end{enumerate}
+
+Every number of this report is read from the workbook, where it is a live formula on
+the clean table \F{tbl\allowbreak Appointments}.
+
+% =====================================================================
+\section{Data quality}\label{sec:quality}
+
+\begin{table}[H]\centering\singlespacing
+\caption{Audit of the raw file (106{,}987 rows)}
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}Xr>{\raggedright\arraybackslash}p{5.8cm}@{}}
+\toprule
+\textbf{Check} & \textbf{Rows} & \textbf{Decision} \\ \midrule
+Empty cells & 0 & None found \\
+Duplicate AppointmentID & 0 & None found \\
+Date.diff different from the two dates & 0 & None found \\
+Appointment dated before its booking & \textbf{5} & \textbf{Removed}: impossible chronology \\
+Age of 115 years & \textbf{5} & \textbf{Removed}: implausible age \\
+PatientId with decimals & 5 & Kept, stored as text \\
+Second booking of a patient on the same day & 8{,}532 & Kept: own identifier and outcome \\
+Appointments on a Saturday & 39 & Kept: rare but valid \\
+Misspelled column names & 3 & Renamed \\
+Codes TRUE/FALSE, F/M, upper-case names & 106{,}987 & Recoded \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The file is complete and internally consistent: no cell is empty, no appointment is
+duplicated, and \F{Date.diff} always equals the difference between the two dates. Two
+defects make a row unusable. Five appointments are dated before their booking, which is
+impossible; five others belong to two patients recorded at 115 years, an implausible
+age. The other findings are valid situations (several bookings on one day, rare Saturday
+clinics) or presentation issues.
+
+% =====================================================================
+\section{Cleaning and preparation}\label{sec:cleaning}
+
+\subsection{Cleaning}
+
+The ten invalid rows are removed and listed in full on the \emph{Data Cleaning} sheet,
+so that the removal can be checked. Three columns are renamed (Hipertension to
+Hypertension, Handcap to Handicap, Date.diff to LeadTimeDays). TRUE/FALSE become Yes/No,
+F/M become Female/Male, and \F{Showed\_up} becomes \F{Status} (Attended, No-show). The
+neighbourhood names, written in capitals, are converted with the formula
+\F{PROPER}, the particles da, de, do and das being set back in lower case with
+\F{SUBSTITUTE}; the 81 names and their formula are shown on the same sheet.
+
+\subsection{Preparation}
+
+Nine fields are added to the Excel table \F{tblAppointments}, each by a formula copied
+down the column, so that the table stays consistent if a value is corrected.
+
+\begin{table}[H]\centering\singlespacing
+\caption{Fields added by Excel formulas}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Field} & \textbf{Definition} \\ \midrule
+NoShow & 1 for a no-show, 0 otherwise: its average is directly the no-show rate \\
+LeadTimeDays & AppointmentDate minus ScheduledDate \\
+LeadTimeBand & Same day, 1 to 3, 4 to 7, 8 to 14, 15 to 30, 31 to 60, 61+ days (nested IF) \\
+AgeGroup & 00-11, 12-17, 18-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75+ (nested IF) \\
+Weekday, WeekStart & Day name (CHOOSE and WEEKDAY) and Monday of the appointment week \\
+SMSFlag & 1 if an SMS was received: its average is the SMS coverage \\
+PriorNoShows & Number of earlier no-shows of the same patient \\
+PatientHistory & First appointment, Attended before or Previous no-show \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\F{PriorNoShows} compares each row with the row above: the table is sorted by patient,
+then date, then appointment number, and the formula adds the no-shows of the patient's
+earlier rows. \F{PatientHistory} follows from it.
+
+\subsection{Checks}
+
+Live formulas on the clean table confirm the result: 106{,}987 raw rows minus 10 removed
+rows equal the 106{,}977 rows of the table; no cell is empty; no lead time is negative;
+the oldest patient is 102 years old; and 60{,}268 rows are a first appointment, which is
+the number of patients.
+
+\capture{data_cleaning.png}{Data Cleaning sheet: audit of the raw file, the ten rows
+removed, the recoding table and, on the right, the live checks on the clean table.}
+
+% =====================================================================
+\section{KPIs}\label{sec:kpis}
+
+Each KPI answers one operational question. The table gives its value on the clean table
+and the Excel formula that computes it on the \emph{KPI Definitions} sheet.
+
+\begin{table}[H]\centering\singlespacing
+\caption{Key performance indicators}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}Xr@{}}
+\toprule
+\textbf{KPI} & \textbf{Question answered} & \textbf{Value} \\ \midrule
+Appointments & How much demand is there? & 106{,}977 \\
+Missed appointments & How many slots are lost? & 21{,}672 \\
+No-show rate & How often is a slot wasted? & \textbf{20.3\%} \\
+Average lead time & How far ahead are patients booked? & 10.2 days \\
+Same-day share & How much activity is booked on the day? & 34.7\% \\
+SMS coverage & How many patients are reminded? & 32.3\% \\
+No-show rate, booked ahead & What is the risk once a patient waits? & 28.5\% \\
+Repeat no-show rate & Does past behaviour predict the next visit? & 29.4\% \\
+Attendance rate & How reliable is the schedule? & 79.7\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The last two rate KPIs name their own base: the booked-ahead rate is computed on the
+69{,}824 appointments booked one day or more ahead, the repeat rate on the 15{,}563
+appointments of patients who had already missed one.
+
+% =====================================================================
+\section{Results}\label{sec:results}
+
+The charts of this section are those of the \emph{Dashboard} sheet, with every filter set
+to All.
+
+\subsection{Lead time}
+
+\capture[0.8\linewidth]{chart_lead_time.png}{No-show rate by lead time. Same-day
+appointments are 34.7\% of the volume but only 8.0\% of the no-shows.}
+
+As soon as the patient has to wait, the rate jumps from 4.7\% to 22.9\% for 1 to 3 days
+and climbs to 34.4\% for 31 to 60 days. The slight fall beyond 60 days concerns only
+2{,}044 appointments.
+
+\subsection{The SMS reminder}
+
+\capture{sms_analysis.png}{SMS Analysis sheet: no-show rate with and without SMS in each
+lead-time band (same day excluded, since no SMS is sent), Mantel-Haenszel odds ratio and
+slots recoverable.}
+
+Overall, the SMS group misses 10.9 points more. This is a Simpson's paradox. No SMS is
+sent for same-day appointments, and only 6.2\% of the 1 to 3 day appointments receive
+one, against about 60\% beyond three days: the SMS group is made of long-lead
+appointments, which carry the highest risk. Compared like with like, the SMS lowers the
+rate in every band, by 1.6 points (1 to 3 days) to 7.8 points (61+ days). The
+Mantel-Haenszel odds ratio, which pools the six bands, is \textbf{0.78}: at equal lead
+time the reminder cuts the odds of a no-show by about a fifth.
+
+\subsection{Who misses appointments}
+
+\pair{chart_age.png}{chart_history.png}{No-show rate by age group (left) and by patient
+history (right). Teenagers of 12 to 17 years miss 26.4\% of their appointments, patients
+of 65 to 74 years 15.1\%. A patient who already missed an appointment misses the next one
+in 29.4\% of cases, against 17.1\% after an attended visit.}
+
+\subsection{Health and social factors}
+
+\begin{table}[H]\centering\singlespacing
+\caption{No-show rate with and without each factor (chi-square test, 1 degree of freedom)}
+\small
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Factor} & \textbf{Group size} & \textbf{Rate} & \textbf{Others} & \textbf{Difference} & \textbf{$p$-value} \\ \midrule
+Scholarship (welfare) & 10{,}809 & 23.8\% & 19.9\% & $+3.9$ & $<0.001$ \\
+Hypertension & 21{,}800 & 17.3\% & 21.0\% & $-3.7$ & $<0.001$ \\
+Diabetes & 7{,}943 & 18.0\% & 20.4\% & $-2.4$ & $<0.001$ \\
+Handicap & 2{,}234 & 18.0\% & 20.3\% & $-2.3$ & 0.007 \\
+Alcoholism & 3{,}360 & 20.1\% & 20.3\% & $-0.1$ & 0.872 \\
+Gender (female) & 70{,}110 & 20.4\% & 20.1\% & $+0.3$ & 0.293 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Welfare recipients miss 3.9 points more. Gender and alcoholism make no difference.
+Hypertension and diabetes seem protective, but hypertensive patients are mostly older,
+and older patients miss less. Compared at equal age, the gap disappears: from 45 years,
+where most hypertensive patients are, their rate is equal to or higher than that of the
+others.
+
+\capture{risk_factors.png}{Risk Factors sheet: rates with and without each factor with
+the chi-square test, hypertension at equal age, and the neighbourhood indicators.}
+
+\subsection{When and where}
+
+\pair{chart_weekday.png}{chart_week.png}{No-show rate by weekday (left) and by week of
+the appointment (right). From Monday to Friday the rate moves between 19.5\% and 21.3\%
+(the 39 Saturday appointments are too few to count); over the six weeks it stays between
+18\% and 22\%.}
+
+\capture[0.8\linewidth]{chart_neighbourhoods.png}{The ten neighbourhoods with the most
+missed appointments. Together they account for 37.2\% of all no-shows.}
+
+Place matters more than time. Among the 53 neighbourhoods with at least 500
+appointments, the no-show rate ranges from 15.7\% to 29.1\%, a spread of thirteen
+points, against less than two points between weekdays.
+
+% =====================================================================
+\section{Insights and recommendations}\label{sec:insights}
+
+\subsection{Lead time is the primary risk}
+
+4.7\% of same-day appointments are missed, against 28.5\% of the appointments booked one
+day or more ahead.
+
+\textbf{Recommendation.} Keep a share of same-day and short-notice slots, and apply a
+moderate overbooking to the slots booked more than a week ahead, where nearly one
+appointment in three is missed. \emph{Owner: scheduling.}
+
+\subsection{The reminder works but misses its target}
+
+At equal lead time the SMS lowers the odds of a no-show by about a fifth. Yet 35{,}240
+appointments booked one day or more ahead received no SMS, and 29.4\% of them were missed.
+
+\textbf{Recommendation.} Send the reminder to every appointment booked one day or more
+ahead, starting with the 1 to 3 day bookings, of which only 6.2\% are reminded today. If
+these appointments had the no-show rate observed with an SMS in their band, about
+\textbf{1{,}400 slots} would have been saved over the six weeks. \emph{Owner: patient
+communication.}
+
+\subsection{Past no-shows repeat}
+
+A patient who already missed an appointment misses the next one in 29.4\% of cases,
+against 17.1\% after an attended visit.
+
+\textbf{Recommendation.} Flag these patients at booking and call them the day before the
+appointment. \emph{Owner: front desk.}
+
+\subsection{Young patients and welfare recipients need a different contact}
+
+Teenagers of 12 to 17 years miss 26.4\% of their appointments and young adults of 18 to
+24 years 25.0\%. Welfare recipients miss 3.9 points more than other patients.
+
+\textbf{Recommendation.} Address the reminders for minors to their parents and offer
+slots outside school hours. Review access barriers (transport, working hours) with the
+social services. \emph{Owner: scheduling and social services.}
+
+\subsection{Chronic patients are not safer}
+
+The lower rate of hypertensive patients is an age effect, not a behaviour.
+
+\textbf{Recommendation.} Do not reduce the reminders sent to chronic patients.
+\emph{Owner: care coordination.}
+
+\subsection{Place, not the weekday, is the lever}
+
+The weekday moves the rate by less than two points, the neighbourhood by thirteen, and
+ten neighbourhoods hold 37\% of the no-shows.
+
+\textbf{Recommendation.} Keep the weekly schedule unchanged and focus outreach on the ten
+neighbourhoods that lose the most slots. \emph{Owner: public health.}
+
+\capture[0.8\linewidth]{insights.png}{Insights sheet: each insight with its evidence, a live value
+computed on the clean table, the recommended action and its owner.}
+
+% =====================================================================
+\section{The Excel dashboard}\label{sec:dashboard}
+
+\F{Healthcare\_NoShows\_Dashboard.xlsx} opens on a \emph{Home} sheet whose contents link
+to every other sheet.
+
+\begin{table}[H]\centering\singlespacing
+\caption{Sheets of the workbook}
+\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{5.6cm}@{}}
+\toprule
+\textbf{Sheet} & \textbf{Content} & \textbf{Excel tools} \\ \midrule
+Home & Contents with a link to each sheet & Hyperlinks \\
+Dashboard & 6 drop-down filters, 6 KPI cards, 8 charts & Data validation, COUNTIFS, SUMIFS \\
+Pivot Dashboard & 6 slicers, 6 KPI cards, 8 pivot charts & Slicers, pivot charts, GETPIVOTDATA \\
+Insights & Seven insights with evidence, live value, action and owner & AVERAGEIFS \\
+Risk Factors & Factors with chi-square tests, hypertension at equal age, neighbourhoods & COUNTIFS, CHISQ.DIST.RT, MINIFS, data bars \\
+SMS Analysis & SMS at equal lead time, Mantel-Haenszel odds ratio & COUNTIFS, conditional formatting \\
+Dashboard Data & Formula tables behind the Dashboard, dynamic top 10 & INDEX, MATCH, LARGE \\
+Pivot Tables & The pivot tables behind the Pivot Dashboard & Pivot tables, top 10 filter \\
+Data Cleaning & Audit, rows removed, recoding, formulas, checks & PROPER, SUBSTITUTE, COUNTBLANK \\
+KPI Definitions & Question, definition, formula and value of each KPI & Structured references \\
+Clean Data & 106{,}977 appointments, 23 columns & Excel table \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The workbook offers two ways to filter. On the \emph{Dashboard}, six drop-down lists
+(gender, age group, lead time, SMS received, scholarship, weekday) drive COUNTIFS and
+SUMIFS formulas, so that the sheet works in any spreadsheet application. On the
+\emph{Pivot Dashboard}, the same six criteria are slicers connected to every pivot table:
+one click filters the KPI cards and the pivot charts at once. Each chart is anchored to a
+fixed block of cells, so it keeps its place and size whatever the screen or the zoom.
+
+\capture[0.74\linewidth]{dashboard.png}{Dashboard sheet: six KPI cards and eight charts,
+all filters set to All.}
+
+% =====================================================================
+\section{Limitations}\label{sec:limits}
+
+\textbf{Six weeks of data.} The file covers 29 April to 8 June 2016; no seasonality or
+trend can be read.
+
+\textbf{The reason for a no-show is not recorded,} nor the specialty or the time of day.
+
+\textbf{The SMS flag says that a reminder was sent, not that it was read.} The SMS effect
+is an observational estimate; a trial on the 1 to 3 day bookings would confirm it before
+a full roll-out.
+
+\textbf{Association, not causation.} The comparisons identify the groups at risk; they do
+not predict an individual no-show.
+
+\vspace{0.1cm}
+\noindent\hfill\begin{minipage}{7cm}\begin{flushright}\singlespacing
+\textbf{KOUAME Koffi Fid\`ele}\\
+Data Analysis Internship\\
+\href{mailto:koffifidelek59@gmail.com}{koffifidelek59@gmail.com}
+\end{flushright}\end{minipage}
+
+\end{document}
